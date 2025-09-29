@@ -1,0 +1,26 @@
+{
+  "name": "gre-si-osc-websocket-bridge",
+  "version": "1.0.0",
+  "description": "WebSocket bridge server for GRE SI microcinema project - receives OSC from SuperCollider and distributes to mobile clients",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "osc": "^2.4.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "osc",
+    "websocket",
+    "supercollider",
+    "performance",
+    "gre"
+  ],
+  "author": "msp",
+  "license": "MIT"
+}
