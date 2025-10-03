@@ -120,8 +120,13 @@ export class AudioManager {
     const dur = plaitsData.dur !== undefined ? plaitsData.dur : 0.3;      // Time between notes
     const decay = plaitsData.decay !== undefined ? plaitsData.decay : 0.5; // Envelope decay amount
 
-    // Convert MIDI note to frequency
-    const frequency = Tone.Frequency(pitch, "midi").toFrequency();
+    // Remap pitch for mobile speakers using non-linear curve favoring high frequencies
+    // Maps 0-127 → 36-127 with exponential curve
+    const normalizedPitch = Math.max(0, Math.min(127, pitch)) / 127;
+    const mobilePitch = 36 + Math.pow(normalizedPitch, 0.7) * 91;
+
+    // Convert remapped MIDI note to frequency
+    const frequency = Tone.Frequency(mobilePitch, "midi").toFrequency();
 
     // Clamp all input parameters to safe ranges
     const clampedHarm = Math.max(0, Math.min(1, harm));

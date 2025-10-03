@@ -314,8 +314,17 @@ export class UIManager {
       html += `<div style="color: #666; font-size: 9px;">State: ${stateName} (${oscClient.ws.readyState})</div>`;
     }
 
-    // Audio Context Status
-    const audioState = typeof Tone !== 'undefined' ? Tone.context.state : 'unknown';
+    // Audio Context Status - handle different engines
+    let audioState = 'unknown';
+    if (window.audioManager) {
+      if (window.audioManager.constructor.name === 'NativeAudioManager') {
+        audioState = window.audioManager.getAudioContextState();
+      } else if (typeof Tone !== 'undefined') {
+        audioState = Tone.context.state;
+      } else if (typeof getAudioContext === 'function') {
+        audioState = getAudioContext().state;
+      }
+    }
     html += `<div style="margin-top: 5px;">
       <span style="color: #fff;">Audio Context:</span>
       <span style="color: ${audioState === 'running' ? '#00ff00' : '#ff0000'};">
@@ -325,6 +334,22 @@ export class UIManager {
 
     // Audio Manager Status
     if (audioStatus) {
+      // Show which audio engine is being used
+      let engineType = 'Unknown';
+      if (window.audioManager) {
+        if (window.audioManager.constructor.name === 'NativeAudioManager') {
+          engineType = 'Native Web Audio';
+        } else if (window.audioManager.constructor.name === 'P5AudioManager') {
+          engineType = 'p5.sound';
+        } else if (window.audioManager.constructor.name === 'AudioManager') {
+          engineType = 'Tone.js';
+        }
+      }
+      html += `<div style="margin-top: 5px;">
+        <span style="color: #fff;">Audio Engine:</span>
+        <span style="color: #00aaff;">${engineType}</span>
+      </div>`;
+
       html += `<div style="margin-top: 5px;">
         <span style="color: #fff;">Audio Ready:</span>
         <span style="color: ${audioStatus.ready ? '#00ff00' : '#ff0000'};">
@@ -383,9 +408,15 @@ export class UIManager {
 
   async restartAudioContext() {
     try {
-      if (typeof Tone !== 'undefined') {
+      if (window.audioManager && window.audioManager.constructor.name === 'NativeAudioManager') {
+        await window.audioManager.resumeAudioContext();
+        this.showSuccess('Native audio context resumed!', 2000);
+      } else if (typeof Tone !== 'undefined') {
         await Tone.start();
-        this.showSuccess('Audio context restarted!', 2000);
+        this.showSuccess('Tone.js audio context restarted!', 2000);
+      } else if (typeof userStartAudio === 'function') {
+        await userStartAudio();
+        this.showSuccess('p5.sound audio context restarted!', 2000);
       }
     } catch (err) {
       this.showError('Failed to restart audio: ' + err.message);

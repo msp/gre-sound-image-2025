@@ -1,8 +1,14 @@
 // Main application entry point - coordinates all modules
 import { OSCWebSocketClient } from './modules/OSCWebSocketClient.js';
 import { AudioManager } from './modules/AudioManager.js';
+import { P5AudioManager } from './modules/P5AudioManager.js';
+import { NativeAudioManager } from './modules/NativeAudioManager.js';
 import { UIManager } from './modules/UIManager.js';
 import { VisualManager } from './modules/VisualManager.js';
+
+// Audio engine selection (toggle between 'tone', 'p5', and 'native')
+// const AUDIO_ENGINE = 'native'; // Change to 'tone' for Tone.js, 'p5' for p5.sound, or 'native' for Web Audio API
+const AUDIO_ENGINE = 'tone';
 
 // Global instances
 let oscClient = null;
@@ -15,10 +21,22 @@ async function initializeApp() {
   try {
     console.log('🚀 Initializing GRE-SI OSC WebSocket Application...');
 
+    console.log('✅ Libraries should be loaded');
+
     // Create managers
-    audioManager = new AudioManager();
+    if (AUDIO_ENGINE === 'native') {
+      audioManager = new NativeAudioManager();
+    } else if (AUDIO_ENGINE === 'p5') {
+      audioManager = new P5AudioManager();
+    } else {
+      audioManager = new AudioManager();
+    }
     uiManager = new UIManager();
     visualManager = new VisualManager();
+
+    let engineName = AUDIO_ENGINE === 'native' ? 'Native Web Audio API' :
+                     AUDIO_ENGINE === 'p5' ? 'p5.sound' : 'Tone.js';
+    console.log(`🎵 Using ${engineName} audio engine`);
 
     // Make managers globally available for OSCWebSocketClient
     window.audioManager = audioManager;
