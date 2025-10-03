@@ -9,7 +9,6 @@
 
   <link rel="stylesheet" type="text/css" href="style.css">
 
-  <script src="libraries/p5.min.js"></script>
   <script src="https://unpkg.com/tone"></script>
 
   <!-- Mobile debugging console -->
@@ -18,8 +17,15 @@
 </head>
 
 <body>
+  <!-- Load p5.js synchronously before modules -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script> -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js"></script> -->
+
+  <script src="libraries/p5/p5.min.js"></script>
+  <!-- <script src="libraries/p5/addons/p5.sound.js"></script> -->
+
   <script type="module" src="main.js"></script>
-  <!-- <script src="sketch.js"></script> -->
+  <!-- <script src="fm-sketch.js"></script> -->
 </body>
 
 </html>

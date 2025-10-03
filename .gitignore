@@ -64,3 +64,8 @@ node_modules/
 
 # dotenv environment variables file
 .env
+
+# msp
+.DS_Store
+
+libraries/p5/empty-example
