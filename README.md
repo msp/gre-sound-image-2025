@@ -24,7 +24,7 @@ macOS will show "cannot verify developer" warning for unsigned binaries:
 
 
 ### Server Status
-When running, you'll see:
+When running, you'll see in the opened terminal window:
 ```
 OSC WebSocket Bridge starting...
 - OSC listening on port 3333
@@ -36,7 +36,7 @@ HTTP/WebSocket server listening on port 80
 ## 📱 Connect Devices
 
 ### Local Testing
-- Open `http://localhost` in your browser.
+- Open [http://localhost](http://localhost) in your browser. You can mimic multiple devices with multiple browser tabs.
 
 ### Performance Setup
 1. **Find your computer's IP address:**
@@ -57,7 +57,7 @@ HTTP/WebSocket server listening on port 80
 
 ## 🎵 SuperCollider Integration Test
 
-Send OSC messages to the bridge server to mimic the performance. Cut and paste into a SC window and CMD-Enter to execute 
+Send OSC messages to the bridge server to mimic the performance. Cut and paste into a SC window and CMD-Enter to execute. I'm running SC version 3.13.0 but earlier versions may work.
 
 ```supercollider
 (
