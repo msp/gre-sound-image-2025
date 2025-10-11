@@ -1,4 +1,4 @@
-# GRE-SI OSC WebSocket Bridge
+# Greenwich Sound Image 2025
 
 A networked, browser based audiovisual instrument. Created for Matt Spendlove & Sally Golding's performance at Greenwich Sound Image 2025.
 
@@ -10,9 +10,9 @@ Server receives OSC messages from SuperCollider and distributes them to mobile w
 ### Download and Run
 
 1. **Download** the server binary from [Releases](../../releases):
-   - **macOS Apple Silicon**: `gre-si-osc-websocket-bridge-macos-arm64`
-   - **macOS Intel**: `gre-si-osc-websocket-bridge-macos-x64`
-   - **Windows**: `gre-si-osc-websocket-bridge-win-x64.exe`
+   - **macOS Apple Silicon**: `gre-sound-image-2025-macos-arm64`
+   - **macOS Intel**: `gre-sound-image-2025-macos-x64`
+   - **Windows**: `gre-sound-image-2025-win-x64.exe`
 
 2. **Double-click** the binary to start the server
 
@@ -91,5 +91,4 @@ For developers and technical collaborators, see [DEVELOPMENT.md](DEVELOPMENT.md)
 - OSC message format details
 - Debugging and testing procedures
 
-**Project**: ACMI-202210 Microcinema
 **License**: MIT

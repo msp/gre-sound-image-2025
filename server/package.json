@@ -1,7 +1,7 @@
 {
-  "name": "gre-si-osc-websocket-bridge",
+  "name": "gre-sound-image-2025",
   "version": "1.0.0",
-  "description": "WebSocket bridge server for GRE SI microcinema project - receives OSC from SuperCollider and distributes to mobile clients",
+  "description": "OSC to WebSocket bridge server for Greenwich Sound Image 2025 Festival - distributed audiovisual performance system",
   "main": "server.js",
   "bin": "server.js",
   "scripts": {

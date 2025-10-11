@@ -50,19 +50,19 @@ jobs:
         if: matrix.platform == 'win-x64'
         run: |
           cd server/dist
-          mv gre-si-osc-websocket-bridge.exe gre-si-osc-websocket-bridge-${{ matrix.platform }}.exe
+          mv gre-sound-image-2025.exe gre-sound-image-2025-${{ matrix.platform }}.exe
 
       - name: Rename binary (macOS)
         if: matrix.platform != 'win-x64'
         run: |
           cd server/dist
-          mv gre-si-osc-websocket-bridge gre-si-osc-websocket-bridge-${{ matrix.platform }}
+          mv gre-sound-image-2025 gre-sound-image-2025-${{ matrix.platform }}
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: gre-si-osc-websocket-bridge-${{ matrix.platform }}
-          path: server/dist/gre-si-osc-websocket-bridge-${{ matrix.platform }}*
+          name: gre-sound-image-2025-${{ matrix.platform }}
+          path: server/dist/gre-sound-image-2025-${{ matrix.platform }}*
 
   release:
     name: Create Release

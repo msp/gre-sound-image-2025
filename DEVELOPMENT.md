@@ -1,4 +1,4 @@
-# Development Guide
+# Development Guide - Greenwich Sound Image 2025
 
 ## 🛠 Development Setup
 
