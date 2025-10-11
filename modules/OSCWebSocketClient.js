@@ -105,21 +105,13 @@ export class OSCWebSocketClient {
       // Parse key-value pairs from args array
       const plaitsData = this.parseKeyValueArgs(oscMessage.args);
 
-      // TODO: MASSIVE TODO - Add support for voice indices 1 and 2 later!
-      // For now, only process voice 0 to keep things simple during development
-      // The system supports 3 Plaits sequences (voice 0, 1, 2) but we're only
-      // handling voice 0. Later we'll need to:
-      // - Handle different synth patches for each voice
-      // - Potentially different visual responses per voice
-      // - Route to different audio channels/effects
-      // - Consider polyphonic vs. separate monophonic handling
-
-      if (plaitsData.voice !== 0) {
-        console.log(`⏭️  Ignoring voice ${plaitsData.voice} (only processing voice 0 for now)`);
+      // Handle voices 0 and 1 (voice 2 still TODO)
+      if (plaitsData.voice !== 0 && plaitsData.voice !== 1) {
+        console.log(`⏭️  Ignoring voice ${plaitsData.voice} (only processing voices 0 and 1 for now)`);
         return;
       }
 
-      console.log('🎛️  Plaits State Update (Voice 0):');
+      console.log(`🎛️  Plaits State Update (Voice ${plaitsData.voice}):`);
       console.log(`   Voice: ${plaitsData.voice || 'N/A'}`);
       console.log(`   Note: ${plaitsData.note || 'N/A'}`);
       console.log(`   Tempo: ${plaitsData.tempo || 'N/A'}`);
