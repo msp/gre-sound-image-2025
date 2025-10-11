@@ -85,9 +85,9 @@ async function handleTapToPlay() {
 async function initializeWebSocketConnection() {
   // Try to connect to WebSocket servers in order of preference
   const wsUrls = [
-    'ws://localhost:3334',           // Local development
-    'ws://192.168.8.1:3334',        // GL iNet router setup
-    `ws://${window.location.hostname}:3334`  // Same host as web page
+    'ws://localhost',                // Local development
+    'ws://192.168.1.100',           // Static IP for performance setup
+    `ws://${window.location.hostname}`  // Same host as web page
   ];
 
   function tryConnect(urlIndex = 0) {

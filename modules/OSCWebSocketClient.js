@@ -1,5 +1,5 @@
 export class OSCWebSocketClient {
-  constructor(wsUrl = 'ws://localhost:3334') {
+  constructor(wsUrl = 'ws://localhost') {
     this.wsUrl = wsUrl;
     this.ws = null;
     this.clientId = null;

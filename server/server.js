@@ -1,19 +1,22 @@
 const WebSocket = require('ws');
 const osc = require('osc');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 class OSCWebSocketBridge {
-  constructor(oscPort = 3333, wsPort = 3334) {
+  constructor(oscPort = 3333, httpPort = 80) {
     this.oscPort = oscPort;
-    this.wsPort = wsPort;
+    this.httpPort = httpPort;
     this.clients = new Map(); // clientId -> { ws, lastActivity }
     this.currentClientIndex = 0;
 
     this.setupOSCListener();
-    this.setupWebSocketServer();
+    this.setupHttpServer();
 
     console.log(`OSC WebSocket Bridge starting...`);
     console.log(`- OSC listening on port ${oscPort}`);
-    console.log(`- WebSocket server on port ${wsPort}`);
+    console.log(`- HTTP/WebSocket server on port ${httpPort}`);
   }
 
   setupOSCListener() {
@@ -39,9 +42,15 @@ class OSCWebSocketBridge {
     this.oscPort.open();
   }
 
-  setupWebSocketServer() {
+  setupHttpServer() {
+    // Create HTTP server that serves static files
+    this.httpServer = http.createServer((req, res) => {
+      this.handleHttpRequest(req, res);
+    });
+
+    // Attach WebSocket server to HTTP server
     this.wss = new WebSocket.Server({
-      port: this.wsPort,
+      server: this.httpServer,
       perMessageDeflate: false
     });
 
@@ -110,7 +119,50 @@ class OSCWebSocketBridge {
       console.error('WebSocket Server Error:', err);
     });
 
-    console.log(`WebSocket server listening on port ${this.wsPort}`);
+    // Start HTTP server
+    this.httpServer.listen(this.httpPort, () => {
+      console.log(`HTTP/WebSocket server listening on port ${this.httpPort}`);
+    });
+  }
+
+  handleHttpRequest(req, res) {
+    // Get the requested path, default to index.html
+    let filePath = req.url === '/' ? '/index.html' : req.url;
+
+    // Security: prevent directory traversal
+    filePath = filePath.replace(/\.\./g, '');
+
+    // Construct full path to parent directory (where client files are)
+    const fullPath = path.join(__dirname, '..', filePath);
+
+    // Get file extension for content type
+    const ext = path.extname(filePath).toLowerCase();
+    const contentTypes = {
+      '.html': 'text/html',
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.ico': 'image/x-icon'
+    };
+
+    const contentType = contentTypes[ext] || 'text/plain';
+
+    // Read and serve the file
+    fs.readFile(fullPath, (err, data) => {
+      if (err) {
+        console.error(`Failed to serve ${filePath}:`, err.message);
+        res.writeHead(404, {'Content-Type': 'text/plain'});
+        res.end('404 Not Found');
+        return;
+      }
+
+      res.writeHead(200, {'Content-Type': contentType});
+      res.end(data);
+      console.log(`Served: ${filePath}`);
+    });
   }
 
   distributeToClients(oscMessage) {
