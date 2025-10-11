@@ -1,0 +1,82 @@
+name: Build and Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos-arm64
+            target: node18-macos-arm64
+          - os: macos-13
+            platform: macos-x64
+            target: node18-macos-x64
+          - os: windows-latest
+            platform: win-x64
+            target: node18-win-x64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
+
+      - name: Install dependencies
+        run: |
+          cd server
+          npm ci
+
+      - name: Build binary
+        run: |
+          cd server
+          npm run build:${{ matrix.platform == 'macos-arm64' && 'mac' || matrix.platform == 'macos-x64' && 'mac-x64' || 'win' }}
+
+      - name: Rename binary (Windows)
+        if: matrix.platform == 'win-x64'
+        run: |
+          cd server/dist
+          mv gre-si-osc-websocket-bridge.exe gre-si-osc-websocket-bridge-${{ matrix.platform }}.exe
+
+      - name: Rename binary (macOS)
+        if: matrix.platform != 'win-x64'
+        run: |
+          cd server/dist
+          mv gre-si-osc-websocket-bridge gre-si-osc-websocket-bridge-${{ matrix.platform }}
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gre-si-osc-websocket-bridge-${{ matrix.platform }}
+          path: server/dist/gre-si-osc-websocket-bridge-${{ matrix.platform }}*
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: binaries/**/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
