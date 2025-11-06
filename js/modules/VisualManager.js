@@ -14,6 +14,10 @@ export class VisualManager {
     this.voice1StartTime = 0;
     this.voice1Duration = 0;
     this.voice1Color = [255, 200, 100];
+
+    // Idle/waiting state tracking
+    this.lastDataTime = Date.now(); // Track when we last received OSC data
+    this.IDLE_THRESHOLD = 10000; // Show pulse after N seconds of no data
   }
 
   initialize() {
@@ -65,12 +69,64 @@ export class VisualManager {
   }
 
   drawP5(p) {
-    // Start with black background
     p.background(0);
 
-    // Draw voice effects in order (voice 0 background, voice 1 overlay)
+    const idle = this.isIdle();
+    const connected = this.isConnected();
+
+    if (idle && connected) {
+      this.drawWaitingPulse(p);
+    }
+
     this.drawVoice0(p);
     this.drawVoice1(p);
+  }
+
+  // Check if we're in idle state (no data for IDLE_THRESHOLD ms)
+  isIdle() {
+    const now = Date.now();
+    const timeSinceData = now - this.lastDataTime;
+
+    // Only idle if no active animations and haven't received data recently
+    return timeSinceData > this.IDLE_THRESHOLD &&
+           !this.voice0Active &&
+           !this.voice1Active;
+  }
+
+  // Check if WebSocket is connected
+  isConnected() {
+    return window.oscClient && window.oscClient.isConnected;
+  }
+
+  // Draw subtle waiting pulse animation
+  drawWaitingPulse(p) {
+    // Use sine wave for smooth breathing effect
+    // Complete cycle every 2 seconds (0.001 * PI = ~3.14 radians per second)
+    const breathPhase = Math.sin(p.millis() * 0.001 * Math.PI) * 0.5 + 0.5; // 0 to 1
+
+    // Brightness values for the pulsing dot
+    const maxBrightness = 60;
+    const minBrightness = 20;
+    const brightness = minBrightness + (maxBrightness - minBrightness) * breathPhase;
+
+    // Draw a small dot in the center of the screen
+    p.push(); // Save drawing state
+    p.noStroke();
+    p.fill(brightness, brightness, brightness);
+
+    // Dot properties - size based on screen width
+    const dotSize = p.width * 0.10;
+    const centerX = p.width / 2;
+    const centerY = p.height / 2;
+
+    // Draw the dot
+    p.ellipse(centerX, centerY, dotSize, dotSize);
+    p.pop(); // Restore drawing state
+
+    // Debug log (once per second)
+    if (p.frameCount % 60 === 0) {
+      console.log('🔵 Waiting pulse active, brightness:', brightness.toFixed(0));
+    }
   }
 
   // Voice 0: Full screen flash
@@ -173,6 +229,9 @@ export class VisualManager {
 
   // Map OSC parameters to visual effects
   handleOSCVisuals(plaitsData, synthDuration) {
+    // Update last data time to reset idle timer
+    this.lastDataTime = Date.now();
+
     const voice = plaitsData.voice || 0;
 
     if (voice === 0) {
