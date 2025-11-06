@@ -438,4 +438,51 @@ export class UIManager {
   showDebugPanel() {
     this.createDebugPanel();
   }
+
+  goFullScreen() {
+    const elem = document.documentElement;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // iOS Safari doesn't support page fullscreen, so we'll skip it
+    if (isIOS) {
+      console.log('📱 iOS detected - Safari/Chrome don\'t support fullscreen API');
+      console.log('📐 Using viewport optimization instead');
+
+      // Add viewport meta tag for better mobile experience
+      let viewport = document.querySelector('meta[name="viewport"]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+      }
+
+      // Scroll to top to hide browser chrome (minimal effect on modern iOS)
+      window.scrollTo(0, 1);
+      setTimeout(() => window.scrollTo(0, 1), 100);
+
+      return;
+    }
+
+    // Desktop and Android browsers should support fullscreen
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().then(() => {
+        console.log('✅ Fullscreen enabled');
+      }).catch(err => {
+        console.error('❌ Fullscreen failed:', err);
+      });
+    } else if (elem.mozRequestFullScreen) { /* Firefox */
+      elem.mozRequestFullScreen();
+    } else if (elem.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+      elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE/Edge */
+      elem.msRequestFullscreen();
+    } else {
+      console.warn('❌ Fullscreen API not supported');
+    }
+  }
+
+  // Prevent mobile browser scrolling and touch events
+  preventMobileScrolling() {
+    document.ontouchmove = function(event) {
+      event.preventDefault();
+    };
+  }
 }

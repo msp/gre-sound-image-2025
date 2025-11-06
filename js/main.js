@@ -49,6 +49,9 @@ async function initializeApp() {
     uiManager.createTapToPlayInterface();
     uiManager.addTapToPlayHandler(handleTapToPlay);
 
+    // Prevent mobile browser scrolling
+    uiManager.preventMobileScrolling();
+
     // Initialize WebSocket connection
     await initializeWebSocketConnection();
 
@@ -62,6 +65,9 @@ async function initializeApp() {
 
 async function handleTapToPlay() {
   try {
+    // Go fullscreen first
+    uiManager.goFullScreen();
+
     // Initialize audio
     await audioManager.initializeAudio();
 
