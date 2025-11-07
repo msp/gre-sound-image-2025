@@ -8,6 +8,7 @@ export class OSCWebSocketClient {
     this.maxReconnectAttempts = 5;
     this.reconnectDelay = 2000; // 2 seconds
     this.lastPlaitsState = null;
+    this.reconnectionAudioPromptShown = false;
 
     this.connect();
   }
@@ -233,9 +234,68 @@ export class OSCWebSocketClient {
       if (window.audioManager && typeof Tone !== 'undefined') {
         await Tone.start();
         console.log('✅ Tone.js audio context restarted after reconnection');
+
+        // Test if audio actually works by checking if we can play after a short delay
+        setTimeout(() => {
+          this.testAudioAfterReconnection();
+        }, 500);
       }
     } catch (err) {
       console.error('❌ Failed to restart audio context after reconnection:', err);
+      this.showReconnectionAudioPrompt();
+    }
+  }
+
+  async testAudioAfterReconnection() {
+    try {
+      // Try a very short test tone to verify audio actually works
+      const testOsc = new Tone.Oscillator(440, 'sine').toDestination();
+      testOsc.volume.value = -60; // Very quiet
+      testOsc.start();
+      testOsc.stop(Tone.now() + 0.01);
+
+      console.log('🔊 Audio test after reconnection successful');
+    } catch (err) {
+      console.log('🔇 Audio test after reconnection failed');
+      this.showReconnectionAudioPrompt();
+    }
+  }
+
+  showReconnectionAudioPrompt() {
+    if (window.uiManager && !this.reconnectionAudioPromptShown) {
+      this.reconnectionAudioPromptShown = true;
+      console.log('📱 Showing audio resume prompt after reconnection');
+
+      window.uiManager.showError('WebSocket reconnected. Tap to resume audio.', 8000);
+
+      // Add one-time click handler to resume audio
+      const resumeHandler = async () => {
+        try {
+          await Tone.start();
+          console.log('✅ Audio resumed after reconnection via user interaction');
+          this.reconnectionAudioPromptShown = false;
+
+          // Clear any stale pending triggers (missed is missed)
+          if (window.audioManager && window.audioManager.getPendingTriggersCount() > 0) {
+            const pendingCount = window.audioManager.getPendingTriggersCount();
+            console.log(`🗑️  Clearing ${pendingCount} stale triggers after reconnection`);
+
+            // Clear pending triggers - they're from the past, don't replay
+            if (window.audioManager.clearPendingTriggers) {
+              window.audioManager.clearPendingTriggers();
+            }
+          }
+        } catch (err) {
+          console.error('Failed to resume audio after reconnection:', err);
+        }
+
+        // Remove event listeners
+        document.removeEventListener('click', resumeHandler);
+        document.removeEventListener('touchstart', resumeHandler);
+      };
+
+      document.addEventListener('click', resumeHandler);
+      document.addEventListener('touchstart', resumeHandler);
     }
   }
 

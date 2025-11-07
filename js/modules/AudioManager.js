@@ -3,6 +3,7 @@ export class AudioManager {
     this.audioStarted = false;
     this.pendingAudioTriggers = [];
     this.lastPlaitsState = null;
+    this.audioResumePromptShown = false;
   }
 
   async initializeAudio() {
@@ -99,11 +100,84 @@ export class AudioManager {
   }
 
   isAudioReady() {
-    return this.audioStarted && Tone.context.state === 'running';
+    if (!this.audioStarted) return false;
+
+    // Check if audio context is actually ready to play sounds
+    const isContextRunning = Tone.context.state === 'running';
+
+    // If we have many pending triggers, audio might be contextually blocked
+    const hasManyPending = this.pendingAudioTriggers.length > 10;
+
+    if (isContextRunning && hasManyPending) {
+      console.log('⚠️  Audio context reports running but may be contextually blocked');
+      // Try to detect if we can actually play audio by testing a silent sound
+      this.testAudioPlayback();
+    }
+
+    return isContextRunning && !hasManyPending;
+  }
+
+  // Test if audio can actually play (not just context state)
+  async testAudioPlayback() {
+    try {
+      // Create a very short, silent test tone
+      const testOsc = new Tone.Oscillator(440, 'sine').toDestination();
+      testOsc.volume.value = -60; // Very quiet
+      testOsc.start();
+      testOsc.stop(Tone.now() + 0.01); // 10ms test
+
+      // If this fails, audio is contextually blocked
+      setTimeout(() => {
+        if (this.pendingAudioTriggers.length > 15) {
+          this.showAudioResumePrompt();
+        }
+      }, 100);
+    } catch (err) {
+      console.log('🔇 Audio test failed - context blocked');
+      this.showAudioResumePrompt();
+    }
+  }
+
+  showAudioResumePrompt() {
+    if (window.uiManager && !this.audioResumePromptShown) {
+      this.audioResumePromptShown = true;
+      window.uiManager.showError('Audio paused. Tap anywhere to resume.', 5000);
+
+      // Add one-time click handler to resume
+      const resumeHandler = async () => {
+        try {
+          await Tone.start();
+          console.log('✅ Audio resumed via user interaction');
+          this.audioResumePromptShown = false;
+          // Process pending triggers
+          if (this.pendingAudioTriggers.length > 0) {
+            console.log(`🔄 Processing ${this.pendingAudioTriggers.length} pending audio triggers`);
+            for (const triggerData of this.pendingAudioTriggers) {
+              this.handlePlaitsState(triggerData);
+            }
+            this.pendingAudioTriggers = [];
+          }
+        } catch (err) {
+          console.error('Failed to resume audio:', err);
+        }
+        document.removeEventListener('click', resumeHandler);
+        document.removeEventListener('touchstart', resumeHandler);
+      };
+
+      document.addEventListener('click', resumeHandler);
+      document.addEventListener('touchstart', resumeHandler);
+    }
   }
 
   getPendingTriggersCount() {
     return this.pendingAudioTriggers.length;
+  }
+
+  clearPendingTriggers() {
+    const clearedCount = this.pendingAudioTriggers.length;
+    this.pendingAudioTriggers = [];
+    console.log(`🧹 Cleared ${clearedCount} pending audio triggers`);
+    return clearedCount;
   }
 
   getLastPlaitsState() {
