@@ -19,8 +19,15 @@ export class OSCWebSocketClient {
 
       this.ws.onopen = (event) => {
         console.log('WebSocket connected successfully');
+        const wasDisconnected = !this.isConnected;
         this.isConnected = true;
         this.reconnectAttempts = 0;
+
+        // If this is a reconnection (not initial connection), restart audio context
+        if (wasDisconnected && window.audioManager && window.audioManager.isAudioReady()) {
+          console.log('🔄 Restarting audio context after reconnection...');
+          this.restartAudioContext();
+        }
 
         // Send ping to keep connection alive
         this.startPingInterval();
@@ -219,6 +226,17 @@ export class OSCWebSocketClient {
 
     this.isConnected = false;
     this.clientId = null;
+  }
+
+  async restartAudioContext() {
+    try {
+      if (window.audioManager && typeof Tone !== 'undefined') {
+        await Tone.start();
+        console.log('✅ Tone.js audio context restarted after reconnection');
+      }
+    } catch (err) {
+      console.error('❌ Failed to restart audio context after reconnection:', err);
+    }
   }
 
   getStatus() {
