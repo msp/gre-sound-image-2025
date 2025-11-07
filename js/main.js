@@ -161,6 +161,59 @@ function cleanup() {
 document.addEventListener('DOMContentLoaded', initializeApp);
 window.addEventListener('beforeunload', cleanup);
 
+// Handle app visibility changes to resume audio context
+document.addEventListener('visibilitychange', async () => {
+  if (!document.hidden && audioManager) {
+    try {
+      // Check which audio engine we're using and resume accordingly
+      if (audioManager.constructor.name === 'NativeAudioManager') {
+        await audioManager.resumeAudioContext();
+        console.log('✅ Audio context resumed after app regained focus (Native)');
+      } else if (typeof Tone !== 'undefined' && Tone.context.state === 'suspended') {
+        await Tone.start();
+        console.log('✅ Audio context resumed after app regained focus (Tone.js)');
+      } else if (typeof userStartAudio === 'function' && getAudioContext && getAudioContext().state === 'suspended') {
+        await userStartAudio();
+        console.log('✅ Audio context resumed after app regained focus (p5.sound)');
+      }
+
+      // Update UI to show audio is active again
+      if (uiManager) {
+        uiManager.updateDebugPanel();
+      }
+    } catch (err) {
+      console.error('❌ Failed to auto-resume audio context:', err);
+    }
+  }
+});
+
+// Also handle focus event as backup
+window.addEventListener('focus', async () => {
+  if (audioManager) {
+    // Small delay to ensure visibility change fires first
+    setTimeout(async () => {
+      try {
+        let audioState = 'unknown';
+        if (audioManager.constructor.name === 'NativeAudioManager') {
+          audioState = audioManager.getAudioContextState();
+        } else if (typeof Tone !== 'undefined') {
+          audioState = Tone.context.state;
+        } else if (typeof getAudioContext === 'function') {
+          audioState = getAudioContext().state;
+        }
+
+        if (audioState === 'suspended' || audioState === 'interrupted') {
+          console.log('🔄 Attempting to resume audio context on focus event...');
+          // Trigger visibility change handler logic
+          document.dispatchEvent(new Event('visibilitychange'));
+        }
+      } catch (err) {
+        console.warn('Focus event audio check failed:', err);
+      }
+    }, 100);
+  }
+});
+
 // Expose instances to global scope for debugging
 window.oscClient = null; // Will be set after connection
 window.audioManager = null; // Will be set in initializeApp
@@ -200,5 +253,9 @@ window.debugApp = {
     } else {
       console.log('UIManager not ready');
     }
+  },
+  resumeAudio: async () => {
+    console.log('🔄 Manual audio resume attempt...');
+    document.dispatchEvent(new Event('visibilitychange'));
   }
 };
