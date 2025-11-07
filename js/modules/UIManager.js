@@ -40,7 +40,18 @@ export class UIManager {
       text-align: center;
       opacity: 0.7;
     `;
-    subtitle.textContent = '(audio + WebSocket connection)';
+
+    // Check if running as PWA on iOS
+    const isIOSPWA = this.isIOSPWA();
+    const isIOS = this.isIOS();
+
+    if (isIOSPWA) {
+      subtitle.textContent = '(fullscreen mode active)';
+    } else if (isIOS) {
+      subtitle.innerHTML = `(audio + WebSocket connection)<br><br><span style="font-size: 3vw; opacity: 0.9;">📱 For fullscreen: Share → Add to Home Screen</span>`;
+    } else {
+      subtitle.textContent = '(audio + WebSocket connection)';
+    }
 
     overlay.appendChild(mainText);
     overlay.appendChild(subtitle);
@@ -441,12 +452,17 @@ export class UIManager {
 
   goFullScreen() {
     const elem = document.documentElement;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // If running as PWA on iOS, we're already in fullscreen-like mode
+    if (this.isIOSPWA()) {
+      console.log('📱 Running as iOS PWA - already in fullscreen mode');
+      return;
+    }
 
     // iOS Safari doesn't support page fullscreen, so we'll skip it
-    if (isIOS) {
+    if (this.isIOS()) {
       console.log('📱 iOS detected - Safari/Chrome don\'t support fullscreen API');
       console.log('📐 Using viewport optimization instead');
+      console.log('💡 Tip: Add to Home Screen for true fullscreen experience');
 
       // Add viewport meta tag for better mobile experience
       let viewport = document.querySelector('meta[name="viewport"]');
@@ -484,5 +500,24 @@ export class UIManager {
     document.ontouchmove = function(event) {
       event.preventDefault();
     };
+  }
+
+  // Check if running on iOS
+  isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  }
+
+  // Check if running as PWA (from home screen) on iOS
+  isIOSPWA() {
+    // Check both iOS-specific standalone and standard display-mode
+    const isStandalone = window.navigator.standalone === true ||
+                        window.matchMedia('(display-mode: standalone)').matches ||
+                        window.matchMedia('(display-mode: fullscreen)').matches;
+    return this.isIOS() && isStandalone;
+  }
+
+  // Check if PWA installation is available
+  canInstallPWA() {
+    return 'serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window;
   }
 }

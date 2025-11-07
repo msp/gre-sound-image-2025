@@ -53,12 +53,14 @@ export class VisualManager {
     // Create fullscreen canvas
     const canvas = p.createCanvas(p.windowWidth, p.windowHeight);
 
-    // Position canvas behind other elements
+    // Position canvas to fill the entire viewport
     canvas.parent(document.body);
     canvas.style('position', 'fixed');
     canvas.style('top', '0');
     canvas.style('left', '0');
-    canvas.style('z-index', '-1');
+    canvas.style('width', '100vw');
+    canvas.style('height', '100vh');
+    canvas.style('z-index', '1');
     canvas.style('pointer-events', 'none'); // Allow clicks to pass through
 
     p.colorMode(p.RGB, 255);
