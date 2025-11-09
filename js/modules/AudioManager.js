@@ -110,8 +110,8 @@ export class AudioManager {
 
     if (isContextRunning && hasManyPending) {
       console.log('⚠️  Audio context reports running but may be contextually blocked');
-      // Try to detect if we can actually play audio by testing a silent sound
-      this.testAudioPlayback();
+      // DISABLED for testing - AudioHealthManager handles this better
+      // this.testAudioPlayback();
     }
 
     return isContextRunning && !hasManyPending;

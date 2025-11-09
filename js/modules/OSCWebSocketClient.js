@@ -9,6 +9,8 @@ export class OSCWebSocketClient {
     this.reconnectDelay = 2000; // 2 seconds
     this.lastPlaitsState = null;
     this.reconnectionAudioPromptShown = false;
+    this.audioHealthPromptShown = false;
+    this.lastAudioHealthCheck = 0;
 
     this.connect();
   }
@@ -103,6 +105,11 @@ export class OSCWebSocketClient {
   }
 
   handleOSCMessage(oscMessage) {
+    // Check audio health on every incoming message using centralized manager
+    if (window.audioHealthManager) {
+      window.audioHealthManager.checkHealthOnMessage();
+    }
+
     // Handle different OSC message types
 
     if (oscMessage.address === '/onset') {
@@ -235,14 +242,15 @@ export class OSCWebSocketClient {
         await Tone.start();
         console.log('✅ Tone.js audio context restarted after reconnection');
 
-        // Test if audio actually works by checking if we can play after a short delay
-        setTimeout(() => {
-          this.testAudioAfterReconnection();
-        }, 500);
+        // DISABLED for testing - AudioHealthManager + visibility change handle this better
+        // setTimeout(() => {
+        //   this.testAudioAfterReconnection();
+        // }, 500);
       }
     } catch (err) {
       console.error('❌ Failed to restart audio context after reconnection:', err);
-      this.showReconnectionAudioPrompt();
+      // DISABLED for testing - AudioHealthManager + visibility change handle this better
+      // this.showReconnectionAudioPrompt();
     }
   }
 
@@ -258,6 +266,72 @@ export class OSCWebSocketClient {
     } catch (err) {
       console.log('🔇 Audio test after reconnection failed');
       this.showReconnectionAudioPrompt();
+    }
+  }
+
+  checkAudioHealthOnMessage() {
+    // Throttle checks to avoid spam - only check every 2 seconds
+    const now = Date.now();
+    if (this.lastAudioHealthCheck && (now - this.lastAudioHealthCheck) < 2000) {
+      return;
+    }
+    this.lastAudioHealthCheck = now;
+
+    if (!window.audioManager || typeof Tone === 'undefined') {
+      return;
+    }
+
+    // Check if Tone.js context is in bad state
+    const contextState = Tone.context.state;
+    const audioStarted = window.audioManager.audioStarted;
+
+    if (!audioStarted || contextState === 'suspended' || contextState === 'interrupted') {
+      console.log(`⚠️ Audio health check failed: started=${audioStarted}, context=${contextState}`);
+      this.showAudioHealthPrompt();
+      return;
+    }
+
+    // Check if we have pending triggers building up (sign of blocked audio)
+    const pendingCount = window.audioManager.getPendingTriggersCount();
+    if (pendingCount > 8) {
+      console.log(`⚠️ Audio health check: ${pendingCount} pending triggers suggest audio blocked`);
+      this.showAudioHealthPrompt();
+      return;
+    }
+  }
+
+  showAudioHealthPrompt() {
+    if (window.uiManager && !this.audioHealthPromptShown) {
+      this.audioHealthPromptShown = true;
+      console.log('📱 Showing audio health resume prompt');
+
+      window.uiManager.showError('Audio paused after sleep. Tap to resume.', 10000);
+
+      // Add one-time click handler to resume audio
+      const resumeHandler = async () => {
+        try {
+          await Tone.start();
+          console.log('✅ Audio resumed via health check prompt');
+          this.audioHealthPromptShown = false;
+
+          // Clear any stale pending triggers
+          if (window.audioManager && window.audioManager.clearPendingTriggers) {
+            const cleared = window.audioManager.clearPendingTriggers();
+            if (cleared > 0) {
+              console.log(`🗑️ Cleared ${cleared} stale triggers during health recovery`);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to resume audio via health check:', err);
+        }
+
+        // Remove event listeners
+        document.removeEventListener('click', resumeHandler);
+        document.removeEventListener('touchstart', resumeHandler);
+      };
+
+      document.addEventListener('click', resumeHandler);
+      document.addEventListener('touchstart', resumeHandler);
     }
   }
 

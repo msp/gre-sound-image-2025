@@ -5,6 +5,7 @@ import { P5AudioManager } from './modules/P5AudioManager.js';
 import { NativeAudioManager } from './modules/NativeAudioManager.js';
 import { UIManager } from './modules/UIManager.js';
 import { VisualManager } from './modules/VisualManager.js';
+import { AudioHealthManager } from './modules/AudioHealthManager.js';
 
 // Audio engine selection (toggle between 'tone', 'p5', and 'native')
 // const AUDIO_ENGINE = 'native'; // Change to 'tone' for Tone.js, 'p5' for p5.sound, or 'native' for Web Audio API
@@ -15,6 +16,7 @@ let oscClient = null;
 let audioManager = null;
 let uiManager = null;
 let visualManager = null;
+let audioHealthManager = null;
 
 // Initialize application
 async function initializeApp() {
@@ -33,6 +35,7 @@ async function initializeApp() {
     }
     uiManager = new UIManager();
     visualManager = new VisualManager();
+    audioHealthManager = new AudioHealthManager();
 
     let engineName = AUDIO_ENGINE === 'native' ? 'Native Web Audio API' :
                      AUDIO_ENGINE === 'p5' ? 'p5.sound' : 'Tone.js';
@@ -41,6 +44,8 @@ async function initializeApp() {
     // Make managers globally available for OSCWebSocketClient
     window.audioManager = audioManager;
     window.visualManager = visualManager;
+    window.audioHealthManager = audioHealthManager;
+    window.uiManager = uiManager;
 
     // Initialize visual manager
     visualManager.initialize();

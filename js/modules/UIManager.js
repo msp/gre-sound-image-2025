@@ -1,6 +1,7 @@
 export class UIManager {
   constructor() {
     this.tapToPlayOverlay = null;
+    this.audioHealthPromptShown = false;
   }
 
   createTapToPlayInterface() {
@@ -143,6 +144,39 @@ export class UIManager {
     setTimeout(() => {
       if (errorDiv && errorDiv.parentNode) {
         errorDiv.remove();
+      }
+    }, duration);
+  }
+
+  showNotification(message, duration = 5000, onTimeout = null) {
+    const notificationDiv = document.createElement('div');
+    notificationDiv.style.cssText = `
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(255, 255, 255, 0.95);
+      color: #333;
+      padding: 15px 20px;
+      border-radius: 8px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      z-index: 10000;
+      max-width: 80vw;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid #ddd;
+    `;
+    notificationDiv.textContent = message;
+
+    document.body.appendChild(notificationDiv);
+
+    setTimeout(() => {
+      if (notificationDiv && notificationDiv.parentNode) {
+        notificationDiv.remove();
+      }
+      // Reset any flags when notification times out
+      if (onTimeout) {
+        onTimeout();
       }
     }, duration);
   }
@@ -519,5 +553,47 @@ export class UIManager {
   // Check if PWA installation is available
   canInstallPWA() {
     return 'serviceWorker' in navigator && 'BeforeInstallPromptEvent' in window;
+  }
+
+  // Centralized audio health prompt
+  showAudioHealthPrompt(reason, resumeCallback) {
+    // Don't show multiple prompts
+    if (this.audioHealthPromptShown) {
+      return;
+    }
+    this.audioHealthPromptShown = true;
+
+    console.log(`📱 Showing audio health prompt: ${reason}`);
+
+    // Create the gentle notification
+    const message = 'Audio paused after sleep. Tap to resume.';
+    this.showNotification(message, 10000, () => {
+      // Reset flag when notification disappears (user didn't tap)
+      this.audioHealthPromptShown = false;
+      console.log('🔄 Audio health prompt flag reset - notification expired');
+    });
+
+    // Add one-time click handler to resume audio
+    const resumeHandler = async () => {
+      try {
+        if (resumeCallback) {
+          await resumeCallback();
+        }
+        this.audioHealthPromptShown = false;
+        console.log('🔄 Audio health prompt flag reset after user interaction');
+      } catch (err) {
+        console.error('Failed to resume audio:', err);
+        // Still reset flag even if resume fails to avoid getting stuck
+        this.audioHealthPromptShown = false;
+        console.log('🔄 Audio health prompt flag reset after failed resume');
+      }
+
+      // Remove event listeners
+      document.removeEventListener('click', resumeHandler);
+      document.removeEventListener('touchstart', resumeHandler);
+    };
+
+    document.addEventListener('click', resumeHandler);
+    document.addEventListener('touchstart', resumeHandler);
   }
 }
