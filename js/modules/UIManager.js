@@ -215,6 +215,13 @@ export class UIManager {
       existing.remove();
     }
 
+    // Only create debug panel if debug=true in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') !== 'true') {
+      console.log('Debug panel disabled (add ?debug=true to URL to enable)');
+      return;
+    }
+
     const debugPanel = document.createElement('div');
     debugPanel.id = 'debug-panel';
     debugPanel.style.cssText = `
@@ -327,7 +334,7 @@ export class UIManager {
 
   updateDebugPanel() {
     const content = document.getElementById('debug-content');
-    if (!content) return;
+    if (!content) return; // Panel doesn't exist (debug mode disabled)
 
     const now = new Date().toLocaleTimeString();
 

@@ -24,9 +24,15 @@
 
   <script src="libraries/tonejs/tone.min.js"></script>
 
-  <!-- Mobile debugging console -->
+  <!-- Mobile debugging console (only with ?debug=true) -->
   <script src="libraries/eruda/eruda.min.js"></script>
-  <script>eruda.init();</script>
+  <script>
+    // Only initialize eruda if debug=true in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') === 'true') {
+      eruda.init();
+    }
+  </script>
 </head>
 
 <body>

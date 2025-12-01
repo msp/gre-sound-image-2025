@@ -80,10 +80,13 @@ async function handleTapToPlay() {
     uiManager.removeTapToPlayInterface();
     uiManager.showSuccess('Audio initialized! Ready to receive OSC messages.');
 
-    // Show debug panel after tap-to-play is dismissed (for development)
-    setTimeout(() => {
-      uiManager.showDebugPanel();
-    }, 1000); // Wait for success message to show
+    // Show debug panel after tap-to-play is dismissed (only if debug=true)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('debug') === 'true') {
+      setTimeout(() => {
+        uiManager.showDebugPanel();
+      }, 1000); // Wait for success message to show
+    }
 
     console.log('✅ Audio initialized and ready');
 

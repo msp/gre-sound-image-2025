@@ -126,8 +126,9 @@ class OSCWebSocketBridge {
   }
 
   handleHttpRequest(req, res) {
-    // Get the requested path, default to index.html
-    let filePath = req.url === '/' ? '/index.html' : req.url;
+    // Get the requested path, default to index.html (strip query params)
+    const urlPath = req.url.split('?')[0]; // Remove query string
+    let filePath = urlPath === '/' ? '/index.html' : urlPath;
 
     // Security: prevent directory traversal
     filePath = filePath.replace(/\.\./g, '');
