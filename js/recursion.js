@@ -8,6 +8,7 @@ function createRecursionSketch(p) {
   let lineWidth = 1;
   let randomnessAmount = 1.0;
   let centerOffset = 0;
+  let volumeFade = 1; // Volume-based fade (0-1), default visible
 
   p.setup = () => {
     p.createCanvas(p.windowWidth, p.windowHeight);
@@ -16,7 +17,9 @@ function createRecursionSketch(p) {
 
   p.draw = () => {
     p.clear(); // Clear the canvas each frame
-    
+
+    // Only draw if volume fade is above 0
+    if (volumeFade <= 0) return;
 
     // Use OSC-controlled center position
     let centerX = p.windowWidth/2 + centerOffset;
@@ -27,8 +30,9 @@ function createRecursionSketch(p) {
 
   // Recursive function
   function f(x,y,r) {
-    // Use OSC-controlled line properties
-    p.stroke(255, 255, 255, lineAlpha);
+    // Use OSC-controlled line properties with volume fade
+    const fadedAlpha = lineAlpha * volumeFade;
+    p.stroke(255, 255, 255, fadedAlpha);
     p.strokeWeight(lineWidth);
 
     // OSC-controlled randomness amount
@@ -48,6 +52,11 @@ function createRecursionSketch(p) {
     // zero indexed! voice 2 = plaits/3
     if (plaitsData.voice !== 2) {
       return; // Ignore other voices
+    }
+
+    // Map volume to fade (0-1)
+    if (plaitsData.volume !== undefined) {
+      volumeFade = Math.max(0, Math.min(1, plaitsData.volume));
     }
 
     // Map OSC parameters to sketch controls

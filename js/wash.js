@@ -49,7 +49,7 @@ function createWashSketch(p) {
   function triggerWash(color, duration = 1500) {
     washActive = true;
     washStartTime = p.millis();
-    washDuration = Math.max(500, duration); // Minimum 500ms
+    washDuration = duration; // Use provided duration directly
 
     if (color && Array.isArray(color) && color.length >= 3) {
       washColor = [color[0], color[1], color[2]];
@@ -83,8 +83,30 @@ function createWashSketch(p) {
       color = hsvToRgb(hue, saturation, value);
     }
 
-    // Use synth duration for wash animation
-    const duration = synthDuration ? synthDuration * 1000 : 1500; // Slightly longer default
+    // Use synth duration for wash animation with adaptive scaling
+    let duration = 1500; // Default duration
+
+    if (synthDuration) {
+      // Scale wash duration with synth duration, but with intelligent limits
+      duration = synthDuration * 1000;
+
+      // For very fast patterns (< 200ms), use 60% of synth duration
+      // This ensures wash completes before next trigger
+      if (duration < 200) {
+        duration = duration * 0.6;
+      }
+      // For medium speeds (200-800ms), use full synth duration
+      else if (duration < 800) {
+        duration = duration;
+      }
+      // For slow patterns (> 800ms), cap at reasonable maximum
+      else {
+        duration = Math.min(duration, 2000);
+      }
+
+      // Absolute minimum for visibility
+      duration = Math.max(100, duration);
+    }
 
     // Trigger wash animation
     triggerWash(color, duration);
