@@ -18,16 +18,30 @@ export class VisualManager {
     // Idle/waiting state tracking
     this.lastDataTime = Date.now(); // Track when we last received OSC data
     this.IDLE_THRESHOLD = 10000; // Show pulse after N seconds of no data
+
+    // Sketch loading system
+    this.loadedSketch = null;
+    this.sketchInstance = null;
+    this.sketchUpdateFromOSC = null;
   }
 
   initialize() {
-    // Create p5.js instance
+    // Check for sketch parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const sketchName = urlParams.get('sketch');
+
+    if (sketchName) {
+      this.loadSketch(sketchName);
+    } else {
+      this.initializeDefaultVisuals();
+    }
+  }
+
+  initializeDefaultVisuals() {
+    // Create default p5.js instance for flash/wash system
     this.p5Instance = new p5((p) => {
       p.setup = () => {
         this.setupP5(p);
-        
-        // let fs = p.fullscreen();
-        // p.fullscreen(!fs);        
       };
 
       p.draw = () => {
@@ -37,16 +51,146 @@ export class VisualManager {
       p.windowResized = () => {
         this.resizeP5(p);
       };
-
-      // p.mousePressed = () => {
-      //   if (p.mouseX > 0 && p.mouseX < p.width && p.mouseY > 0 && p.mouseY < p.height) {
-      //     let fs = p.fullscreen();
-      //     p.fullscreen(!fs);
-      //   }
-      // };      
     });
 
-    console.log('✅ Visual Manager initialized with p5.js');
+    console.log('✅ Visual Manager initialized with default flash/wash system');
+  }
+
+  async loadSketch(sketchName) {
+    try {
+      console.log(`🎨 Loading sketch: ${sketchName}`);
+
+      // Create script element to load global-mode sketch
+      const script = document.createElement('script');
+      script.src = `js/${sketchName}.js`;
+
+      // Wait for script to load
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = () => {
+          console.error(`❌ Sketch not found: "${sketchName}" at path "js/${sketchName}.js"`);
+          reject(new Error(`Failed to load sketch: ${sketchName}`));
+        };
+        document.head.appendChild(script);
+      });
+
+      // Capture the global functions that the sketch defined
+      const globalSetup = window.setup;
+      const globalDraw = window.draw;
+      const globalWindowResized = window.windowResized;
+      const globalMousePressed = window.mousePressed;
+      const globalKeyPressed = window.keyPressed;
+      const updateFromOSC = window.updateFromOSC;
+
+      // Store the OSC update function if it exists
+      this.sketchUpdateFromOSC = updateFromOSC;
+
+      // Create container for sketch
+      const container = this.createSketchContainer();
+
+      // Create p5 instance that wraps the global functions
+      this.sketchInstance = new p5((p) => {
+        p.setup = () => {
+          // Call the sketch's setup, binding p5 functions to the instance
+          if (globalSetup) {
+            try {
+              this.bindGlobalP5Functions(p);
+              globalSetup();
+            } catch (error) {
+              console.error('❌ Error in sketch setup():', error);
+            }
+          }
+        };
+
+        p.draw = () => {
+          if (globalDraw) {
+            try {
+              this.bindGlobalP5Functions(p);
+              globalDraw();
+            } catch (error) {
+              console.error('❌ Error in sketch draw():', error);
+              p.noLoop(); // Stop drawing if there's an error
+            }
+          }
+        };
+
+        p.windowResized = () => {
+          if (globalWindowResized) {
+            this.bindGlobalP5Functions(p);
+            globalWindowResized();
+          } else {
+            // Default resize behavior
+            p.resizeCanvas(p.windowWidth, p.windowHeight);
+          }
+        };
+
+        p.mousePressed = () => {
+          if (globalMousePressed) {
+            this.bindGlobalP5Functions(p);
+            globalMousePressed();
+          }
+        };
+
+        p.keyPressed = () => {
+          if (globalKeyPressed) {
+            this.bindGlobalP5Functions(p);
+            globalKeyPressed();
+          }
+        };
+      }, container);
+
+      // Also create default flash/wash system as background layer
+      this.initializeDefaultVisuals();
+
+      console.log(`✅ Sketch "${sketchName}" loaded successfully`);
+      if (this.sketchUpdateFromOSC) {
+        console.log(`🎛️  OSC integration available for "${sketchName}"`);
+      }
+
+    } catch (error) {
+      console.error(`❌ Failed to load sketch "${sketchName}":`, error.message);
+      console.error(`   Available sketches should be placed in the "js/" directory`);
+      // Fallback to default visuals
+      console.log('🔄 Falling back to default flash/wash system');
+      this.initializeDefaultVisuals();
+    }
+  }
+
+  createSketchContainer() {
+    // Create container div for sketch
+    const container = document.createElement('div');
+    container.id = 'sketch-container';
+    container.style.position = 'fixed';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '100vw';
+    container.style.height = '100vh';
+    container.style.zIndex = '2'; // Above default visuals (z-index 1)
+    container.style.pointerEvents = 'none';
+    document.body.appendChild(container);
+    return container;
+  }
+
+  bindGlobalP5Functions(p) {
+    // Bind all p5.js functions to the global scope so sketches work unchanged
+    const p5Functions = [
+      'createCanvas', 'background', 'clear', 'fill', 'noFill', 'stroke', 'noStroke', 'strokeWeight',
+      'rect', 'ellipse', 'line', 'point', 'triangle', 'quad', 'arc', 'bezier', 'curve', 'circle',
+      'width', 'height', 'mouseX', 'mouseY', 'pmouseX', 'pmouseY', 'mouseIsPressed',
+      'keyIsPressed', 'key', 'keyCode', 'frameCount', 'millis', 'frameRate', 'noLoop', 'loop',
+      'push', 'pop', 'translate', 'rotate', 'scale', 'shearX', 'shearY',
+      'colorMode', 'red', 'green', 'blue', 'alpha', 'hue', 'saturation', 'brightness',
+      'random', 'randomSeed', 'noise', 'noiseDetail', 'noiseSeed', 'randomGaussian',
+      'map', 'lerp', 'constrain', 'norm', 'dist', 'mag', 'atan2', 'degrees', 'radians',
+      'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'pow', 'sqrt', 'abs', 'ceil', 'floor', 'round',
+      'windowWidth', 'windowHeight', 'resizeCanvas'
+    ];
+
+    p5Functions.forEach(funcName => {
+      if (p[funcName] !== undefined) {
+        window[funcName] = p[funcName].bind ? p[funcName].bind(p) : p[funcName];
+      }
+    });
   }
 
   setupP5(p) {
@@ -234,6 +378,16 @@ export class VisualManager {
     // Update last data time to reset idle timer
     this.lastDataTime = Date.now();
 
+    // If we have a loaded sketch with OSC integration, send data to it
+    if (this.sketchUpdateFromOSC) {
+      try {
+        this.sketchUpdateFromOSC(plaitsData, synthDuration);
+      } catch (error) {
+        console.error('Error calling sketch updateFromOSC:', error);
+      }
+    }
+
+    // Always run default flash/wash system (background layer)
     const voice = plaitsData.voice || 0;
 
     if (voice === 0) {
@@ -329,7 +483,19 @@ export class VisualManager {
     if (this.p5Instance) {
       this.p5Instance.remove();
       this.p5Instance = null;
-      console.log('🧹 Visual Manager destroyed');
     }
+
+    if (this.sketchInstance) {
+      this.sketchInstance.remove();
+      this.sketchInstance = null;
+    }
+
+    // Clean up sketch container
+    const container = document.getElementById('sketch-container');
+    if (container) {
+      container.remove();
+    }
+
+    console.log('🧹 Visual Manager destroyed');
   }
 }

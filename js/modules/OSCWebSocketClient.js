@@ -120,12 +120,6 @@ export class OSCWebSocketClient {
       // Parse key-value pairs from args array
       const plaitsData = this.parseKeyValueArgs(oscMessage.args);
 
-      // Handle voices 0 and 1 (voice 2 still TODO)
-      if (plaitsData.voice !== 0 && plaitsData.voice !== 1) {
-        console.log(`⏭️  Ignoring voice ${plaitsData.voice} (only processing voices 0 and 1 for now)`);
-        return;
-      }
-
       console.log(`🎛️  Plaits State Update (Voice ${plaitsData.voice}):`);
       console.log(`   Voice: ${plaitsData.voice || 'N/A'}`);
       console.log(`   Note: ${plaitsData.note || 'N/A'}`);
