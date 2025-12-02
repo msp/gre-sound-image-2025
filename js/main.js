@@ -47,8 +47,8 @@ async function initializeApp() {
     window.audioHealthManager = audioHealthManager;
     window.uiManager = uiManager;
 
-    // Initialize visual manager
-    visualManager.initialize();
+    // Initialize visual manager (now async)
+    await visualManager.initialize();
 
     // Create tap-to-play interface
     uiManager.createTapToPlayInterface();
