@@ -290,6 +290,11 @@ export class UIManager {
     testAudioBtn.style.cssText = this.getButtonStyle();
     testAudioBtn.onclick = () => this.testAudio();
 
+    const testNoiseBtn = document.createElement('button');
+    testNoiseBtn.textContent = '📺 Test Noise';
+    testNoiseBtn.style.cssText = this.getButtonStyle();
+    testNoiseBtn.onclick = () => this.testNoise();
+
     const reconnectBtn = document.createElement('button');
     reconnectBtn.textContent = '🔄 Reconnect';
     reconnectBtn.style.cssText = this.getButtonStyle();
@@ -301,6 +306,7 @@ export class UIManager {
     restartAudioBtn.onclick = () => this.restartAudioContext();
 
     controls.appendChild(testAudioBtn);
+    controls.appendChild(testNoiseBtn);
     controls.appendChild(reconnectBtn);
     controls.appendChild(restartAudioBtn);
 
@@ -431,6 +437,27 @@ export class UIManager {
       this.showSuccess('Test sound triggered!', 1000);
     } else {
       this.showError('Test function not available');
+    }
+  }
+
+  testNoise() {
+    if (window.audioManager && window.audioManager.triggerNoisePing) {
+      // Create test plaits data for voice 2
+      const testNoiseData = {
+        voice: 2,
+        pitch: 60 + Math.floor(Math.random() * 24), // Random note C4-C6
+        timbre: Math.random(), // Random cutoff
+        morph: Math.random(), // Random noise type
+        harm: Math.random(), // Random distortion
+        volume: 0.8,
+        dur: 1.0,
+        decay: 0.5
+      };
+
+      window.audioManager.triggerNoisePing(testNoiseData);
+      this.showSuccess('Test noise triggered!', 1000);
+    } else {
+      this.showError('Noise synthesis not available');
     }
   }
 

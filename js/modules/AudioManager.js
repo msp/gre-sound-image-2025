@@ -37,8 +37,18 @@ export class AudioManager {
     // Store the latest state
     this.lastPlaitsState = plaitsData;
 
-    // Trigger randomized FM ping sound
-    this.triggerFMPing(plaitsData);
+    // Route to different synthesis engines based on voice
+    const voice = plaitsData.voice || 0;
+
+    if (voice === 2) {
+      // Voice 2: Noise synthesis for TV static effect
+      console.log(`🔀 Routing voice ${voice} to noise synthesis`);
+      this.triggerNoisePing(plaitsData);
+    } else {
+      // Voices 0, 1, 3-5: FM synthesis
+      console.log(`🔀 Routing voice ${voice} to FM synthesis`);
+      this.triggerFMPing(plaitsData);
+    }
   }
 
   async triggerFMPing(plaitsData) {
@@ -251,6 +261,164 @@ export class AudioManager {
       modRelease,
       volume: volumeDB,
       duration: Math.min(noteDuration, 2.0) // Cap at 2 seconds for safety
+    };
+  }
+
+  async triggerNoisePing(plaitsData) {
+    try {
+      console.log('🎛️ triggerNoisePing called with data:', plaitsData);
+
+      // Check if audio has been initialized by user gesture
+      if (!this.audioStarted || Tone.context.state !== 'running') {
+        console.log('⏸️  Audio not started, queueing noise trigger for later');
+        this.pendingAudioTriggers.push(plaitsData);
+        return;
+      }
+
+      console.log('🎛️ Audio ready, mapping OSC parameters...');
+
+      // Map OSC parameters to noise synthesis
+      const params = this.mapOSCToNoiseParams(plaitsData);
+      console.log('🎛️ Mapped noise params:', params);
+
+      console.log('🎛️ Creating Tone.js objects...');
+
+      // Create noise source
+      const noise = new Tone.Noise(params.noiseType);
+      console.log('✅ Noise source created');
+
+      // Create high-pass filter to remove low frequencies (phone speakers)
+      const highpass = new Tone.Filter({
+        frequency: 200, // Remove everything below 200Hz
+        type: 'highpass'
+      });
+
+      // Create main filter for tonal shaping
+      const filter = new Tone.Filter({
+        frequency: params.cutoff,
+        Q: params.resonance,
+        type: 'lowpass'
+      });
+
+      // Create EQ to boost upper mids for phone speakers
+      const eq = new Tone.EQ3({
+        low: -12,    // Cut lows
+        mid: +6,     // Boost mids
+        high: +3     // Slight high boost
+      });
+
+      console.log('✅ Filter chain created');
+
+      // Create gain node for volume control
+      const gain = new Tone.Gain(Tone.dbToGain(params.volume));
+      console.log('✅ Gain node created');
+
+      // Create envelope for amplitude control
+      const envelope = new Tone.AmplitudeEnvelope({
+        attack: params.attack,
+        decay: params.decay,
+        sustain: params.sustain,
+        release: params.release
+      });
+      console.log('✅ Envelope created');
+
+      // Connect signal chain: noise → highpass → filter → eq → gain → envelope → destination
+      noise.connect(highpass);
+      highpass.connect(filter);
+      filter.connect(eq);
+      eq.connect(gain);
+      gain.connect(envelope);
+      envelope.toDestination();
+      console.log('✅ Signal chain connected');
+
+      console.log(`✅ Volume set to ${params.volume}dB`);
+
+      // Start the noise source
+      noise.start();
+      console.log('✅ Noise started');
+
+      console.log(`📺 TV Static: cutoff: ${params.cutoff.toFixed(1)}Hz, Q: ${params.resonance.toFixed(2)}`);
+      console.log(`   Type: ${params.noiseType}, bits: ${params.bits}, dur: ${params.duration.toFixed(2)}s`);
+
+      // Trigger the envelope
+      envelope.triggerAttackRelease(params.duration);
+
+      // Clean up after sound finishes
+      setTimeout(() => {
+        noise.stop();
+        noise.dispose();
+        highpass.dispose();
+        filter.dispose();
+        eq.dispose();
+        gain.dispose();
+        envelope.dispose();
+      }, (params.duration + 1) * 1000); // Add 1 second buffer
+
+    } catch (error) {
+      console.error('Error triggering noise ping:', error);
+    }
+  }
+
+  mapOSCToNoiseParams(plaitsData) {
+    // Extract parameters with fallbacks
+    const pitch = plaitsData.pitch !== undefined ? plaitsData.pitch : 60; // Default to C4
+    const harm = plaitsData.harm !== undefined ? plaitsData.harm : 0.5;   // Default to mid-range
+    const timbre = plaitsData.timbre !== undefined ? plaitsData.timbre : 0.5;
+    const morph = plaitsData.morph !== undefined ? plaitsData.morph : 0.5;
+    const volume = plaitsData.volume !== undefined ? plaitsData.volume : 0.8;
+    const dur = plaitsData.dur !== undefined ? plaitsData.dur : 0.3;
+    const decay = plaitsData.decay !== undefined ? plaitsData.decay : 0.5;
+
+    // Clamp all input parameters to safe ranges
+    const clampedHarm = Math.max(0, Math.min(1, harm));
+    const clampedTimbre = Math.max(0, Math.min(1, timbre));
+    const clampedMorph = Math.max(0, Math.min(1, morph));
+    const clampedDecay = Math.max(0, Math.min(1, decay));
+
+    // Map timbre (0-1) to filter cutoff frequency (800Hz to 6000Hz - phone speaker sweet spot)
+    const cutoff = 800 + (clampedTimbre * 5200);
+
+    // Map pitch (MIDI note) to filter resonance/Q (1 to 15)
+    // Normalize pitch to 0-1 range (C1=24 to C8=108)
+    const normalizedPitch = Math.max(0, Math.min(1, (pitch - 24) / 84));
+    const resonance = 1 + (normalizedPitch * 14);
+
+    // Map morph (0-1) to noise type
+    let noiseType;
+    if (clampedMorph < 0.33) {
+      noiseType = 'white';
+    } else if (clampedMorph < 0.66) {
+      noiseType = 'pink';
+    } else {
+      noiseType = 'brown';
+    }
+
+    // Map harm (0-1) to bit crushing amount (16 bits to 2 bits)
+    const bits = Math.max(2, Math.round(16 - (clampedHarm * 14)));
+
+    // Envelope parameters
+    const attack = Math.max(0.001, clampedDecay * 0.05 + 0.001); // 1ms to 51ms
+    const decayTime = Math.max(0.05, clampedDecay * 1.0 + 0.1); // 100ms to 1100ms
+    const sustain = Math.max(0.1, Math.min(0.8, clampedDecay * 0.7 + 0.1)); // 10% to 80%
+    const release = Math.max(0.05, clampedDecay * 0.5 + 0.1); // 100ms to 600ms
+
+    // Map volume (0-2) to dB (-15dB to -5dB for noise - louder than FM)
+    const volumeDB = (volume * 10) - 15; // 0→-15dB, 1→-5dB, 2→+5dB
+
+    // Calculate duration
+    const noteDuration = Math.min(dur * 0.9, clampedDecay * 2.0 + 0.2);
+
+    return {
+      cutoff,
+      resonance,
+      noiseType,
+      bits,
+      attack,
+      decay: decayTime,
+      sustain,
+      release,
+      volume: volumeDB,
+      duration: Math.min(noteDuration, 3.0) // Cap at 3 seconds for noise
     };
   }
 }
